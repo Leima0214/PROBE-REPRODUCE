@@ -27,7 +27,7 @@ detection:
   num_classes: 5
   hidden_dim: 384
   neck_dim: 128
-  source_label_fraction: 0.1
+  source_label_fraction: 1.0   # 1.0 = all labels; 0.1 = paper's limited-label setting
 
 detection_optim:
   lr: 0.0001
@@ -46,12 +46,12 @@ optim:
   lr: 0.0005
   weight_decay: 0.05
   pretrain_epochs: 100
-  detector_epochs: 50
 
 data:
   source_manifest: data/source_train.jsonl
   target_manifest: data/target_unlabeled.jsonl
   val_manifest: data/val.jsonl
   image_root: data/images
-  batch_size: 32
-  num_workers: 4
+  batch_size: 8               # per-GPU batch (RTX 4070 Ti 12GB safe limit)
+  gradient_accumulation: 4    # effective batch = 8 × 4 = 32
+  num_workers: 2              # Windows-friendly default

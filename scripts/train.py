@@ -38,7 +38,7 @@ from probe.data.road_damage import RoadDamageDataset
 from probe.engine.self_training import (
     DomainAlignmentHead,
     SimSiamHeads,
-    probe_pretrain_step,
+    compute_probe_losses,
 )
 from probe.engine.detection import (
     apply_nms,
@@ -177,20 +177,34 @@ def train_detection_head(
         transform=eval_transform(image_size),
     )
 
-    source_loader = DataLoader(
-        source_dataset,
-        batch_size=cfg["data"]["batch_size"],
-        shuffle=True,
-        num_workers=cfg["data"]["num_workers"],
-        drop_last=True,
-        collate_fn=detection_collate,
-    )
     val_loader = DataLoader(
         val_dataset,
         batch_size=cfg["data"]["batch_size"],
         shuffle=False,
         num_workers=cfg["data"]["num_workers"],
         drop_last=False,
+        collate_fn=detection_collate,
+    )
+
+    # ------------------------------------------------------------------
+    # Limited source labels (paper Table 2: 10 %, 50 %, 100 %)
+    # ------------------------------------------------------------------
+    label_frac = cfg["detection"].get("source_label_fraction", 1.0)
+    if label_frac < 1.0:
+        import random as _random
+        _random.seed(cfg.get("seed", 42))
+        n_full = len(source_dataset)
+        n_keep = max(1, int(n_full * label_frac))
+        keep_idx = sorted(_random.sample(range(n_full), n_keep))
+        source_dataset = torch.utils.data.Subset(source_dataset, keep_idx)
+        print(f"Source label fraction {label_frac}: using {n_keep}/{n_full} labeled images")
+
+    source_loader = DataLoader(
+        source_dataset,
+        batch_size=cfg["data"]["batch_size"],
+        shuffle=True,
+        num_workers=cfg["data"]["num_workers"],
+        drop_last=True,
         collate_fn=detection_collate,
     )
 
@@ -220,6 +234,8 @@ def train_detection_head(
     score_threshold = det_cfg.get("score_threshold", 0.05)
     nms_threshold = det_cfg.get("nms_threshold", 0.5)
     val_interval = det_cfg.get("val_interval", 5)
+    use_amp = device.type == "cuda"
+    grad_accum = cfg["data"].get("gradient_accumulation", 1)
 
     best_map = 0.0
     best_epoch = -1
@@ -231,11 +247,7 @@ def train_detection_head(
         param.requires_grad = False
 
     history_det: dict[str, list[float]] = {
-        "cls": [],
-        "box": [],
-        "ctr": [],
-        "total": [],
-        "mAP": [],
+        "cls": [], "box": [], "ctr": [], "total": [], "mAP": [],
     }
 
     for epoch in range(total_epochs):
@@ -243,30 +255,37 @@ def train_detection_head(
         epoch_losses = {"cls": 0.0, "box": 0.0, "ctr": 0.0, "total": 0.0}
         steps = 0
 
+        optimizer.zero_grad(set_to_none=True)
         for images, targets in source_loader:
             images = images.to(device)
 
             # Forward — backbone is frozen
-            _, patch_tokens, _ = model.encode(images, prototype_state)
-            predictions = model.detection_head(patch_tokens)
+            if use_amp:
+                with torch.amp.autocast("cuda"):
+                    _, patch_tokens, _ = model.encode(images, prototype_state)
+                    predictions = model.detection_head(patch_tokens)
+                    loss_dict = detection_loss(
+                        predictions, targets, locations, stride,
+                        focal_alpha=focal_alpha, focal_gamma=focal_gamma,
+                        box_weight=box_weight, ctr_weight=ctr_weight,
+                    )
+            else:
+                _, patch_tokens, _ = model.encode(images, prototype_state)
+                predictions = model.detection_head(patch_tokens)
+                loss_dict = detection_loss(
+                    predictions, targets, locations, stride,
+                    focal_alpha=focal_alpha, focal_gamma=focal_gamma,
+                    box_weight=box_weight, ctr_weight=ctr_weight,
+                )
 
-            # Loss
-            loss_dict = detection_loss(
-                predictions,
-                targets,
-                locations,
-                stride,
-                focal_alpha=focal_alpha,
-                focal_gamma=focal_gamma,
-                box_weight=box_weight,
-                ctr_weight=ctr_weight,
-            )
+            (loss_dict["det_total"] / grad_accum).backward()
 
-            optimizer.zero_grad(set_to_none=True)
-            loss_dict["det_total"].backward()
-            # Clip gradients for stability
-            torch.nn.utils.clip_grad_norm_(model.detection_head.parameters(), max_norm=10.0)
-            optimizer.step()
+            if (steps + 1) % grad_accum == 0:
+                torch.nn.utils.clip_grad_norm_(
+                    model.detection_head.parameters(), max_norm=10.0
+                )
+                optimizer.step()
+                optimizer.zero_grad(set_to_none=True)
 
             for k in epoch_losses:
                 epoch_losses[k] += loss_dict[f"det_{k}"].item()
@@ -579,6 +598,10 @@ def main() -> None:
     ssl_aug = simsiam_transform(args.image_size)
     history: dict[str, list[float]] = {"loss": [], "ssl": [], "prompt": [], "dapa": []}
 
+    grad_accum = cfg["data"].get("gradient_accumulation", 1)
+    print(f"Phase 2: batch_size={cfg['data']['batch_size']}, grad_accum={grad_accum}, "
+          f"effective_batch={cfg['data']['batch_size'] * grad_accum}")
+
     total_epochs = args.epochs if args.epochs is not None else cfg["optim"]["pretrain_epochs"]
     for epoch in range(total_epochs):
         ssl_heads.train()
@@ -587,6 +610,7 @@ def main() -> None:
         model.backbone.freeze_backbone()
         epoch_losses = {"loss": 0.0, "ssl": 0.0, "prompt": 0.0, "dapa": 0.0}
 
+        optimizer.zero_grad(set_to_none=True)
         for step, (source_batch, (target_imgs, _)) in enumerate(
             zip(source_loader, target_loader)
         ):
@@ -598,7 +622,7 @@ def main() -> None:
 
             if use_amp:
                 with torch.amp.autocast("cuda"):
-                    metrics = probe_pretrain_step(
+                    loss, metrics = compute_probe_losses(
                         model,
                         ssl_heads,
                         alignment_head,
@@ -606,13 +630,12 @@ def main() -> None:
                         target_view1,
                         target_view2,
                         prototype_state,
-                        optimizer,
                         prompt_weight=cfg["spem"]["prompt_weight"],
                         dapa_weight=cfg["dapa"]["weight"],
                         prompt_temperature=cfg["spem"]["prompt_temperature"],
                     )
             else:
-                metrics = probe_pretrain_step(
+                loss, metrics = compute_probe_losses(
                     model,
                     ssl_heads,
                     alignment_head,
@@ -620,14 +643,19 @@ def main() -> None:
                     target_view1,
                     target_view2,
                     prototype_state,
-                    optimizer,
                     prompt_weight=cfg["spem"]["prompt_weight"],
                     dapa_weight=cfg["dapa"]["weight"],
                     prompt_temperature=cfg["spem"]["prompt_temperature"],
                 )
 
+            (loss / grad_accum).backward()
+
             for k in epoch_losses:
                 epoch_losses[k] += metrics[k]
+
+            if (step + 1) % grad_accum == 0:
+                optimizer.step()
+                optimizer.zero_grad(set_to_none=True)
 
             if step % args.log_interval == 0:
                 print(
