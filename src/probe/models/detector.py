@@ -82,10 +82,17 @@ class PromptEnhancedViT(nn.Module):
 
 
 class LightweightDetectionHead(nn.Module):
-    """Three-stage detection head described in the PROBE paper.
+    """FCOS-style dense detection head with separate cls / box / centerness branches.
 
-    It reshapes ViT patch tokens into a square feature map and predicts
-    per-cell class logits plus four box parameters.
+    Reshapes ViT patch tokens into a square feature map (14×14 for ViT-B/16 @ 224),
+    then applies a shared stem + three lightweight prediction branches:
+
+      - Classification: C sigmoid logits per location  (Focal Loss)
+      - Box regression: 4 [l, t, r, b] distances per location  (GIoU Loss)
+      - Centerness:     1 score per location  (BCE Loss)
+
+    The box branch predicts [l, t, r, b] distances from the grid centre to the
+    four box boundaries, normalized by the feature stride (16 px for ViT-B/16).
     """
 
     def __init__(
@@ -97,25 +104,59 @@ class LightweightDetectionHead(nn.Module):
     ) -> None:
         super().__init__()
         self.num_classes = num_classes
-        self.head = nn.Sequential(
+
+        # Shared stem
+        self.stem = nn.Sequential(
             nn.Conv2d(embed_dim, hidden_dim, kernel_size=3, padding=1, bias=False),
             nn.BatchNorm2d(hidden_dim),
             nn.GELU(),
-            nn.Conv2d(hidden_dim, neck_dim, kernel_size=1),
-            nn.GELU(),
-            nn.Conv2d(neck_dim, num_classes + 4, kernel_size=1),
         )
 
+        # Three lightweight prediction branches
+        self.cls_branch = nn.Sequential(
+            nn.Conv2d(hidden_dim, neck_dim, kernel_size=1),
+            nn.GELU(),
+            nn.Conv2d(neck_dim, num_classes, kernel_size=1),
+        )
+        self.box_branch = nn.Sequential(
+            nn.Conv2d(hidden_dim, neck_dim, kernel_size=1),
+            nn.GELU(),
+            nn.Conv2d(neck_dim, 4, kernel_size=1),
+        )
+        self.ctr_branch = nn.Sequential(
+            nn.Conv2d(hidden_dim, neck_dim, kernel_size=1),
+            nn.GELU(),
+            nn.Conv2d(neck_dim, 1, kernel_size=1),
+        )
+
+        self._init_weights()
+
+    def _init_weights(self) -> None:
+        for module in [self.cls_branch, self.box_branch, self.ctr_branch]:
+            last_conv = module[-1]
+            if isinstance(last_conv, nn.Conv2d):
+                nn.init.normal_(last_conv.weight, mean=0.0, std=0.01)
+                if last_conv.bias is not None:
+                    nn.init.constant_(last_conv.bias, 0.0)
+        # Bias towards background at init helps early training stability
+        # log(0.01) ≈ -4.595 — prior: only 1% of locations are positive
+        last_cls_conv = self.cls_branch[-1]
+        if isinstance(last_cls_conv, nn.Conv2d) and last_cls_conv.bias is not None:
+            nn.init.constant_(last_cls_conv.bias, -4.595)
+
     def forward(self, patch_tokens: torch.Tensor) -> dict[str, torch.Tensor]:
+        """Return per-location class logits, [l,t,r,b] boxes, and centerness logits."""
         batch, num_patches, dim = patch_tokens.shape
-        side = int(num_patches**0.5)
+        side = int(num_patches ** 0.5)
         if side * side != num_patches:
             raise ValueError("Patch tokens must form a square feature map.")
         feature_map = patch_tokens.transpose(1, 2).reshape(batch, dim, side, side)
-        pred = self.head(feature_map)
+
+        shared = self.stem(feature_map)
         return {
-            "class_logits": pred[:, : self.num_classes],
-            "boxes": pred[:, self.num_classes :],
+            "class_logits": self.cls_branch(shared),   # [B, C, H, W]
+            "boxes": self.box_branch(shared),           # [B, 4, H, W] — [l, t, r, b]
+            "centerness": self.ctr_branch(shared),      # [B, 1, H, W] — logit
         }
 
 

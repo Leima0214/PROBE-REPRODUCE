@@ -29,6 +29,19 @@ detection:
   neck_dim: 128
   source_label_fraction: 0.1
 
+detection_optim:
+  lr: 0.0001
+  lr_min: 0.000001
+  weight_decay: 0.0001
+  epochs: 50
+  focal_alpha: 0.25
+  focal_gamma: 2.0
+  box_weight: 1.0
+  ctr_weight: 1.0
+  score_threshold: 0.05
+  nms_threshold: 0.5
+  val_interval: 5
+
 optim:
   lr: 0.0005
   weight_decay: 0.05
