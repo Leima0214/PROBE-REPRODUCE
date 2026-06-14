@@ -1,0 +1,44 @@
+seed: 42
+device: cuda
+
+backbone:
+  name: vit_base_patch16_224
+  embed_dim: 768
+  frozen: true
+
+spem:
+  pca_dim: 50
+  num_prototypes: 10
+  kmeans_iters: 25
+  prompt_hidden_dim: 256
+  injection_layers: [0, 6]
+  prompt_temperature: 0.2
+  prompt_weight: 1.0
+
+dapa:
+  projection_dim: 256
+  weight: 0.5
+
+ssl:
+  hidden_dim: 2048
+  out_dim: 2048
+
+detection:
+  num_classes: 5
+  hidden_dim: 384
+  neck_dim: 128
+  source_label_fraction: 0.1
+
+optim:
+  lr: 0.0005
+  weight_decay: 0.05
+  pretrain_epochs: 100
+  detector_epochs: 50
+
+data:
+  source_manifest: data/source_train.jsonl
+  target_manifest: data/target_unlabeled.jsonl
+  val_manifest: data/val.jsonl
+  image_root: data/images
+  batch_size: 32
+  num_workers: 4

@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+
+# Training artifacts (too large for GitHub)
+checkpoints/
+*.pt
+*.pth
+
+# Raw images and dataset manifests
+data/images/
+data/*.jsonl
+
+# Claude local settings
+.claude/
+
+# Runtime
+*.log
+wandb/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
