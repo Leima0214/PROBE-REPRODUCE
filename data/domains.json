@@ -1,0 +1,57 @@
+[
+  {
+    "name": "china_motorbike",
+    "train_manifest": "china_motorbike_train.jsonl",
+    "val_manifest": "china_motorbike_val.jsonl",
+    "unlabeled_manifest": "china_motorbike_unlabeled.jsonl",
+    "image_root": "F:\\deeplearning\\PROBE-main\\data\\images",
+    "num_train": 1582,
+    "num_val": 395,
+    "num_unlabeled": 500,
+    "num_labeled": 1977
+  },
+  {
+    "name": "czech",
+    "train_manifest": "czech_train.jsonl",
+    "val_manifest": "czech_val.jsonl",
+    "unlabeled_manifest": "czech_unlabeled.jsonl",
+    "image_root": "F:\\deeplearning\\PROBE-main\\data\\images",
+    "num_train": 2264,
+    "num_val": 565,
+    "num_unlabeled": 709,
+    "num_labeled": 2829
+  },
+  {
+    "name": "india",
+    "train_manifest": "india_train.jsonl",
+    "val_manifest": "india_val.jsonl",
+    "unlabeled_manifest": "india_unlabeled.jsonl",
+    "image_root": "F:\\deeplearning\\PROBE-main\\data\\images",
+    "num_train": 6165,
+    "num_val": 1541,
+    "num_unlabeled": 1959,
+    "num_labeled": 7706
+  },
+  {
+    "name": "japan",
+    "train_manifest": "japan_train.jsonl",
+    "val_manifest": "japan_val.jsonl",
+    "unlabeled_manifest": "japan_unlabeled.jsonl",
+    "image_root": "F:\\deeplearning\\PROBE-main\\data\\images",
+    "num_train": 8405,
+    "num_val": 2101,
+    "num_unlabeled": 2627,
+    "num_labeled": 10506
+  },
+  {
+    "name": "united_states",
+    "train_manifest": "united_states_train.jsonl",
+    "val_manifest": "united_states_val.jsonl",
+    "unlabeled_manifest": "united_states_unlabeled.jsonl",
+    "image_root": "F:\\deeplearning\\PROBE-main\\data\\images",
+    "num_train": 3844,
+    "num_val": 961,
+    "num_unlabeled": 1200,
+    "num_labeled": 4805
+  }
+]

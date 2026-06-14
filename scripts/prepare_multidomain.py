@@ -50,6 +50,8 @@ DOMAIN_PATTERNS = [
     (r"Japan", "japan"),
     (r"India", "india"),
     (r"Czech", "czech"),
+    (r"United_States", "united_states"),
+    (r"Norway", "norway"),
 ]
 
 
