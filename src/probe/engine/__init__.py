@@ -1,6 +1,7 @@
 from .self_training import (
     DomainAlignmentHead,
     SimSiamHeads,
+    compute_probe_losses,
     linear_mmd_loss,
     probe_pretrain_step,
     simsiam_loss,

@@ -79,7 +79,7 @@ def linear_mmd_loss(
     return (source_projected.mean(dim=0) - target_projected.mean(dim=0)).pow(2).sum()
 
 
-def probe_pretrain_step(
+def compute_probe_losses(
     model,
     ssl_heads: SimSiamHeads,
     alignment_head: DomainAlignmentHead,
@@ -87,15 +87,21 @@ def probe_pretrain_step(
     target_view1: torch.Tensor,
     target_view2: torch.Tensor,
     prototype_state: PrototypeState,
-    optimizer,
     prompt_weight: float = 1.0,
     dapa_weight: float = 0.5,
     prompt_temperature: float = 0.2,
-) -> dict[str, float]:
-    """One paper-aligned PROBE pre-training step.
+) -> tuple[torch.Tensor, dict[str, float]]:
+    """Compute PROBE pre-training losses — returns (loss_tensor, metrics_dict).
 
-    The frozen ViT produces prompt-conditioned features. Trainable pieces are
-    the SPEM prompt projector, SimSiam heads and DAPA projection head.
+    The caller owns ``loss.backward()`` and ``optimizer.step()`` so that
+    gradient accumulation can be handled externally.
+
+    Returns
+    -------
+    loss : Tensor
+        Total loss (before scaling).  Divide by ``grad_accum`` before backward.
+    metrics : dict[str, float]
+        Detached float values for logging.
     """
 
     source_features, _, _ = model.encode(source_images, prototype_state)
@@ -110,13 +116,13 @@ def probe_pretrain_step(
     loss_dapa = linear_mmd_loss(alignment_head, source_features, target_features1)
     loss = loss_ssl + prompt_weight * loss_prompt + dapa_weight * loss_dapa
 
-    optimizer.zero_grad(set_to_none=True)
-    loss.backward()
-    optimizer.step()
-
-    return {
+    return loss, {
         "loss": float(loss.detach().cpu()),
         "ssl": float(loss_ssl.detach().cpu()),
         "prompt": float(loss_prompt.detach().cpu()),
         "dapa": float(loss_dapa.detach().cpu()),
     }
+
+
+# Backward-compatible alias
+probe_pretrain_step = compute_probe_losses
