@@ -13,6 +13,9 @@ checkpoints/
 data/images/
 data/*.jsonl
 
+# Experiment outputs
+experiments/
+
 # Claude local settings
 .claude/
 

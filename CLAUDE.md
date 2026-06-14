@@ -8,6 +8,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install dependencies (into conda env "probe")
 pip install -r requirements.txt
 
+# ---- Single-domain workflow ----
 # Convert RDD2022 Pascal VOC XML → PROBE JSONL manifests
 python scripts/convert_rdd2022.py --xml-dir data/images --output-dir data
 
@@ -17,6 +18,19 @@ python scripts/train.py --config configs/probe_base.yaml --device cuda
 # Phase 3 only (detection head training from pretrained checkpoint)
 python scripts/train.py --config configs/probe_base.yaml --phase 3 \
     --resume checkpoints/probe_final.pt --device cuda
+
+# ---- Multi-domain cross-domain workflow ----
+# Step 1: Prepare multi-domain data (auto-detect countries from file naming)
+python scripts/prepare_multidomain.py --data-root data/images
+
+# Step 2: Dry-run to preview all source→target experiment pairs
+python scripts/run_experiments.py --dry-run
+
+# Step 3: Run all cross-domain experiments
+python scripts/run_experiments.py --device cuda
+
+# Run a single cross-domain pair
+python scripts/run_experiments.py --source china_motorbike --target japan --device cuda
 
 # Quick viz run (fewer epochs)
 python scripts/train.py --config configs/probe_base.yaml --device cuda --epochs 5
