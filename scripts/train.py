@@ -212,7 +212,7 @@ def train_detection_head(
     # ------------------------------------------------------------------
     # Training loop
     # ------------------------------------------------------------------
-    total_epochs = det_cfg.get("epochs", 50)
+    total_epochs = getattr(args, "det_epochs", None) or det_cfg.get("epochs", 50)
     focal_alpha = det_cfg.get("focal_alpha", 0.25)
     focal_gamma = det_cfg.get("focal_gamma", 2.0)
     box_weight = det_cfg.get("box_weight", 1.0)
@@ -269,14 +269,14 @@ def train_detection_head(
             optimizer.step()
 
             for k in epoch_losses:
-                epoch_losses[k] += loss_dict[f"det_{k}"]
+                epoch_losses[k] += loss_dict[f"det_{k}"].item()
 
             steps += 1
             if steps % args.log_interval == 0:
                 print(
                     f"  epoch {epoch:3d} step {steps:4d} | "
-                    f"cls {loss_dict['det_cls']:.4f}  box {loss_dict['det_box']:.4f}  "
-                    f"ctr {loss_dict['det_ctr']:.4f}  total {loss_dict['det_total']:.4f}"
+                    f"cls {loss_dict['det_cls'].item():.4f}  box {loss_dict['det_box'].item():.4f}  "
+                    f"ctr {loss_dict['det_ctr'].item():.4f}  total {loss_dict['det_total'].item():.4f}"
                 )
 
         scheduler.step()
@@ -330,7 +330,7 @@ def train_detection_head(
                     },
                     best_path,
                 )
-                print(f"  ✓ Best model saved (mAP={best_map:.4f}) → {best_path}")
+                print(f"  Best model saved (mAP={best_map:.4f}) -> {best_path}")
 
     # Final checkpoint
     final_path = checkpoint_dir / "probe_det_final.pt"
@@ -361,7 +361,9 @@ def main() -> None:
     parser.add_argument("--log-interval", type=int, default=10)
     parser.add_argument("--checkpoint-dir", default="checkpoints")
     parser.add_argument("--epochs", type=int, default=None, help="Override pretrain_epochs from config")
+    parser.add_argument("--det-epochs", type=int, default=None, help="Override detection training epochs")
     parser.add_argument("--no-viz", action="store_true", help="Skip visualizations")
+    parser.add_argument("--batch-size", type=int, default=None, help="Override batch_size from config")
     parser.add_argument(
         "--phase",
         type=int,
@@ -380,6 +382,10 @@ def main() -> None:
     # Config ----------------------------------------------------------------
     with open(args.config, "r", encoding="utf-8") as handle:
         cfg = yaml.safe_load(handle)
+
+    # CLI overrides
+    if args.batch_size is not None:
+        cfg["data"]["batch_size"] = args.batch_size
 
     device = torch.device(args.device if torch.cuda.is_available() else "cpu")
     print(f"Device: {device}")

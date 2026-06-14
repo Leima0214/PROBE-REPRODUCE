@@ -30,7 +30,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 from torchvision.ops import batched_nms as tv_batched_nms
-from torchvision.ops import generalized_box_iou
+from torchvision.ops import generalized_box_iou_loss
 
 
 # ---------------------------------------------------------------------------
@@ -125,20 +125,23 @@ def encode_boxes(
 
 
 def decode_boxes(
-    box_preds: torch.Tensor,    # [K, 4] — [l, t, r, b] normalised
+    box_preds: torch.Tensor,    # [K, 4] — log [l, t, r, b] (stride-normalised)
     locations: torch.Tensor,    # [K, 2] — (x_ctr, y_ctr) in px
     stride: float,
     max_size: float = 224.0,
 ) -> torch.Tensor:
-    """Decode normalised [l, t, r, b] predictions to [x1, y1, x2, y2] in px."""
-    lt_rb = box_preds * stride  # denormalise
+    """Decode log-space [l, t, r, b] predictions to [x1, y1, x2, y2] in px.
+
+    FCOS-style: exp() ensures non-negative distances, then denormalise.
+    """
+    lt_rb = torch.exp(box_preds) * stride  # denormalise, ensure positive
     x1 = locations[:, 0] - lt_rb[:, 0]
     y1 = locations[:, 1] - lt_rb[:, 1]
     x2 = locations[:, 0] + lt_rb[:, 2]
     y2 = locations[:, 1] + lt_rb[:, 3]
     boxes = torch.stack([x1, y1, x2, y2], dim=-1)
 
-    # Clamp to image bounds (optional but helps)
+    # Clamp to image bounds
     boxes[:, 0].clamp_(min=0.0, max=max_size)
     boxes[:, 1].clamp_(min=0.0, max=max_size)
     boxes[:, 2].clamp_(min=0.0, max=max_size)
@@ -212,9 +215,8 @@ def giou_loss(
     pred_boxes: torch.Tensor,  # [M, 4] decoded [x1,y1,x2,y2]
     gt_boxes: torch.Tensor,    # [M, 4]
 ) -> torch.Tensor:
-    """Generalised IoU loss (1 - GIoU)."""
-    giou = generalized_box_iou(pred_boxes, gt_boxes)  # [M]
-    return (1.0 - giou).mean()
+    """Generalised IoU loss (1 - GIoU), always in [0, 2] for valid boxes."""
+    return generalized_box_iou_loss(pred_boxes, gt_boxes).mean()
 
 
 # ---------------------------------------------------------------------------
@@ -314,10 +316,10 @@ def detection_loss(
     total = loss_cls + box_weight * loss_box + ctr_weight * loss_ctr
 
     return {
-        "det_cls": float(loss_cls.detach().cpu()),
-        "det_box": float(loss_box.detach().cpu()),
-        "det_ctr": float(loss_ctr.detach().cpu()),
-        "det_total": float(total.detach().cpu()),
+        "det_cls": loss_cls,
+        "det_box": loss_box,
+        "det_ctr": loss_ctr,
+        "det_total": total,
     }
 
 
@@ -504,14 +506,6 @@ def evaluate_map(
 
     model.eval()
 
-    transform = T.Compose(
-        [
-            T.Resize((image_size, image_size)),
-            T.ToTensor(),
-            T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ]
-    )
-
     # Collect all ground truth and detections
     all_gt: dict[int, list[dict]] = {c: [] for c in range(num_classes)}
     all_det: dict[int, list[dict]] = {c: [] for c in range(num_classes)}
@@ -532,8 +526,17 @@ def evaluate_map(
             if c < num_classes:
                 all_gt[c].append({"image_id": idx, "box": box, "matched": False})
 
-        # Run detection
-        tensor = transform(img).unsqueeze(0).to(device)
+        # Run detection — dataset may or may not have a transform
+        if isinstance(img, torch.Tensor):
+            tensor = img.unsqueeze(0).to(device)
+        else:
+            import torchvision.transforms as T
+            _transform = T.Compose([
+                T.Resize((image_size, image_size)),
+                T.ToTensor(),
+                T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+            ])
+            tensor = _transform(img).unsqueeze(0).to(device)
         predictions = model.detect(tensor, prototype_state)
         det_boxes, det_scores, det_labels = collect_detections(
             predictions, locations, stride,
