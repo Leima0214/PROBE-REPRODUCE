@@ -49,6 +49,7 @@ from probe.engine.detection import (
 )
 from probe.models import (
     LightweightDetectionHead,
+    MoCoPromptConsistencyLoss,
     PROBEModel,
     PromptEnhancedViT,
     PromptProjector,
@@ -414,7 +415,7 @@ def main() -> None:
     # Build model
     # ------------------------------------------------------------------
     print("Loading ViT backbone...")
-    vit = timm.create_model(cfg["backbone"]["name"], pretrained=True)
+    vit = vit = timm.create_model(cfg["backbone"]["name"], pretrained=True, img_size=args.image_size)
     vit.reset_classifier(0)
 
     discovery = TargetPrototypeDiscovery(
@@ -542,6 +543,18 @@ def main() -> None:
     # ------------------------------------------------------------------
     print("\n=== Phase 2: Self-Supervised Pretraining ===")
 
+    # --- MoCo prompt-consistency module (optional) ------------------------
+    moco_loss: MoCoPromptConsistencyLoss | None = None
+    if cfg.get("moco", {}).get("enabled", False):
+        moco_loss = MoCoPromptConsistencyLoss(
+            prompt_projector,
+            queue_size=cfg["moco"].get("queue_size", 4096),
+            temperature=cfg["moco"].get("temperature", 0.2),
+            momentum=cfg["moco"].get("momentum", 0.999),
+        ).to(device)
+        print(f"MoCo enabled: queue={moco_loss.queue_size}, "
+              f"T={moco_loss.temperature}, m={moco_loss.momentum}")
+    # ------------------------------------------------------------------
     source_dataset = RoadDamageDataset(
         cfg["data"]["source_manifest"],
         cfg["data"]["image_root"],
@@ -633,6 +646,8 @@ def main() -> None:
                         prompt_weight=cfg["spem"]["prompt_weight"],
                         dapa_weight=cfg["dapa"]["weight"],
                         prompt_temperature=cfg["spem"]["prompt_temperature"],
+                        moco_loss=moco_loss,
+                        prototypes=prototype_state.centroids,
                     )
             else:
                 loss, metrics = compute_probe_losses(
@@ -646,6 +661,8 @@ def main() -> None:
                     prompt_weight=cfg["spem"]["prompt_weight"],
                     dapa_weight=cfg["dapa"]["weight"],
                     prompt_temperature=cfg["spem"]["prompt_temperature"],
+                    moco_loss=moco_loss,
+                    prototypes=prototype_state.centroids,
                 )
 
             (loss / grad_accum).backward()

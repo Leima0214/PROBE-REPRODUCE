@@ -55,3 +55,9 @@ data:
   batch_size: 8               # per-GPU batch (RTX 4070 Ti 12GB safe limit)
   gradient_accumulation: 4    # effective batch = 8 × 4 = 32
   num_workers: 2              # Windows-friendly default
+
+moco:
+  enabled: false              # set true to use MoCo prompt consistency
+  queue_size: 4096            # negative-sample queue capacity
+  temperature: 0.2            # InfoNCE temperature
+  momentum: 0.999             # EMA coefficient for momentum projector

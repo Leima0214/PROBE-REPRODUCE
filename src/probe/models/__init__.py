@@ -1,5 +1,6 @@
 from .detector import LightweightDetectionHead, PROBEModel, PromptEnhancedViT
 from .prompts import (
+    MoCoPromptConsistencyLoss,
     PromptConsistencyLoss,
     PromptProjector,
     PrototypeState,
@@ -8,6 +9,7 @@ from .prompts import (
 
 __all__ = [
     "LightweightDetectionHead",
+    "MoCoPromptConsistencyLoss",
     "PROBEModel",
     "PromptConsistencyLoss",
     "PromptEnhancedViT",

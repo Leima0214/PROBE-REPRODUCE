@@ -4,7 +4,11 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from probe.models.prompts import PromptConsistencyLoss, PrototypeState
+from probe.models.prompts import (
+    MoCoPromptConsistencyLoss,
+    PromptConsistencyLoss,
+    PrototypeState,
+)
 
 
 def negative_cosine_similarity(pred: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -90,11 +94,23 @@ def compute_probe_losses(
     prompt_weight: float = 1.0,
     dapa_weight: float = 0.5,
     prompt_temperature: float = 0.2,
+    moco_loss: MoCoPromptConsistencyLoss | None = None,
+    prototypes: torch.Tensor | None = None,
 ) -> tuple[torch.Tensor, dict[str, float]]:
     """Compute PROBE pre-training losses — returns (loss_tensor, metrics_dict).
 
     The caller owns ``loss.backward()`` and ``optimizer.step()`` so that
     gradient accumulation can be handled externally.
+
+    Parameters
+    ----------
+    moco_loss:
+        Optional MoCo loss module.  When provided, the vanilla
+        ``PromptConsistencyLoss`` is replaced by MoCo-style InfoNCE
+        with momentum encoder and negative-sample queue.
+    prototypes:
+        PCA centroids [P, d] — required when *moco_loss* is used so the
+        momentum projector can encode them.
 
     Returns
     -------
@@ -109,10 +125,21 @@ def compute_probe_losses(
     target_features2, _, _ = model.encode(target_view2, prototype_state)
 
     loss_ssl = simsiam_loss(ssl_heads, target_features1, target_features2)
-    loss_prompt = PromptConsistencyLoss(prompt_temperature)(
-        target_features1,
-        target_prompts1,
-    )
+
+    if moco_loss is not None:
+        assert prototypes is not None, "prototypes required for MoCo loss"
+        loss_prompt = moco_loss(
+            target_features1,
+            target_prompts1,
+            prototypes,
+            model.backbone.prompt_projector,
+        )
+    else:
+        loss_prompt = PromptConsistencyLoss(prompt_temperature)(
+            target_features1,
+            target_prompts1,
+        )
+
     loss_dapa = linear_mmd_loss(alignment_head, source_features, target_features1)
     loss = loss_ssl + prompt_weight * loss_prompt + dapa_weight * loss_dapa
 
