@@ -52,8 +52,8 @@ data:
   target_manifest: data/Czech_unlabeled.jsonl     # target unlabeled for SPEM + SSL
   val_manifest: data/czech_val.jsonl              # Czech validation set for mAP eval
   image_root: data/images
-  batch_size: 8               # per-GPU batch (RTX 4070 Ti 12GB safe limit)
-  gradient_accumulation: 4    # effective batch = 8 × 4 = 32
+  batch_size: 32               # per-GPU batch (RTX 4070 Ti 12GB safe limit)
+  gradient_accumulation: 1    # effective batch = 8 × 4 = 32
   num_workers: 2              # Windows-friendly default
 
 moco:
