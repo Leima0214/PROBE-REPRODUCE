@@ -139,10 +139,11 @@ class LightweightDetectionHead(nn.Module):
                 if last_conv.bias is not None:
                     nn.init.constant_(last_conv.bias, 0.0)
         # Bias towards background at init helps early training stability
-        # log(0.01) ≈ -4.595 — prior: only 1% of locations are positive
+        # log(0.076) ≈ -2.5 — prior: ~7.6% of locations are positive
+        # Reduced from -4.595 to avoid multi-epoch dead detector (mAP=0)
         last_cls_conv = self.cls_branch[-1]
         if isinstance(last_cls_conv, nn.Conv2d) and last_cls_conv.bias is not None:
-            nn.init.constant_(last_cls_conv.bias, -4.595)
+            nn.init.constant_(last_cls_conv.bias, -2.5)
 
     def forward(self, patch_tokens: torch.Tensor) -> dict[str, torch.Tensor]:
         """Return per-location class logits, [l,t,r,b] boxes, and centerness logits."""
