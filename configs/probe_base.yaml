@@ -30,7 +30,7 @@ detection:
   source_label_fraction: 1.0   # 1.0 = all labels; 0.1 = paper's limited-label setting
 
 detection_optim:
-  lr: 0.0001
+  lr: 0.0005
   lr_min: 0.000001
   weight_decay: 0.0001
   epochs: 50
@@ -50,7 +50,7 @@ optim:
 data:
   source_manifest: data/Japan_labeled.jsonl       # Japan → Czech (paper: RDD-Japan → CRDDC'22)
   target_manifest: data/Czech_unlabeled.jsonl     # target unlabeled for SPEM + SSL
-  val_manifest: data/japan_val.jsonl              # Czech validation set for mAP eval
+  val_manifest: data/czech_val.jsonl              # Czech validation set for mAP eval
   image_root: data/images
   batch_size: 32               # per-GPU batch (RTX 4070 Ti 12GB safe limit)
   gradient_accumulation: 1    # effective batch = 8 × 4 = 32
