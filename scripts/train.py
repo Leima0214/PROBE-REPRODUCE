@@ -232,6 +232,7 @@ def train_detection_head(
     focal_gamma = det_cfg.get("focal_gamma", 2.0)
     box_weight = det_cfg.get("box_weight", 1.0)
     ctr_weight = det_cfg.get("ctr_weight", 1.0)
+    center_radius = det_cfg.get("center_radius", 1.5)
     score_threshold = det_cfg.get("score_threshold", 0.05)
     nms_threshold = det_cfg.get("nms_threshold", 0.5)
     val_interval = det_cfg.get("val_interval", 5)
@@ -269,6 +270,7 @@ def train_detection_head(
                         predictions, targets, locations, stride,
                         focal_alpha=focal_alpha, focal_gamma=focal_gamma,
                         box_weight=box_weight, ctr_weight=ctr_weight,
+                        center_radius=center_radius,
                     )
             else:
                 _, patch_tokens, _ = model.encode(images, prototype_state)

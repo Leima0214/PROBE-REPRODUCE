@@ -59,13 +59,18 @@ def encode_boxes(
     gt_boxes: torch.Tensor,       # [N, 4]  — [x1, y1, x2, y2]
     locations: torch.Tensor,      # [K, 2]  — (x_ctr, y_ctr)
     stride: float,
+    center_radius: float = 1.5,   # FCOS center-sampling radius (×stride)
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Encode GT boxes as [l, t, r, b] distance targets (normalised by stride).
+
+    Implements FCOS centre-sampling: only locations within ``center_radius×stride``
+    of the box centre are treated as positive samples, reducing low-quality
+    matches at box edges.
 
     Returns
     -------
     targets : [K, 4]   — [l*, t*, r*, b*], 0 for negative locations
-    mask :    [K] bool — True if location (x_ctr, y_ctr) falls inside *any* GT box
+    mask :    [K] bool — True if location passes centre-sampling for *any* GT box
     assigned_idx : [K] int64 — index of assigned GT box, -1 for negatives
     """
     K = locations.shape[0]
@@ -84,7 +89,7 @@ def encode_boxes(
     x1, y1, x2, y2 = gt_boxes[:, 0], gt_boxes[:, 1], gt_boxes[:, 2], gt_boxes[:, 3]
 
     # [K, N] — distance from each location to each box's four sides
-    l = x_ctr[:, None] - x1[None, :]   # positive if centre is right of left edge
+    l = x_ctr[:, None] - x1[None, :]
     t = y_ctr[:, None] - y1[None, :]
     r = x2[None, :] - x_ctr[:, None]
     b = y2[None, :] - y_ctr[:, None]
@@ -92,20 +97,31 @@ def encode_boxes(
     # A location is inside a box if all four distances are > 0
     inside = (l > 0.0) & (t > 0.0) & (r > 0.0) & (b > 0.0)  # [K, N]
 
+    # ---- Centre sampling (FCOS) ------------------------------------------
+    # Only keep locations within centre_radius × stride of each box's centre.
+    box_ctr_x = (x1 + x2) / 2.0   # [N]
+    box_ctr_y = (y1 + y2) / 2.0   # [N]
+    radius = center_radius * stride
+    dx = (x_ctr[:, None] - box_ctr_x[None, :]).abs()  # [K, N]
+    dy = (y_ctr[:, None] - box_ctr_y[None, :]).abs()  # [K, N]
+    in_center = (dx <= radius) & (dy <= radius)        # [K, N]
+
+    inside = inside & in_center
+    # --------------------------------------------------------------------
+
     # For locations inside multiple boxes, assign the one with the smallest area
     areas = (x2 - x1) * (y2 - y1)  # [N]
     inside_float = inside.float()  # [K, N]
-    # Mask out non-inside with a huge area so they aren't selected if no box matches
     huge = areas.max() + 1.0
     masked_areas = inside_float * areas[None, :] + (1.0 - inside_float) * huge
     assigned_idx = masked_areas.argmin(dim=1)  # [K]
-    mask = inside_float.sum(dim=1) > 0  # [K] — has at least one matching box
+    mask = inside_float.sum(dim=1) > 0  # [K]
 
     # Invalidate assignments for negative locations
     assigned_idx[~mask] = -1
 
     # Gather the assigned box for each location
-    idx_safe = assigned_idx.clamp(min=0)  # dummy index 0 for negatives
+    idx_safe = assigned_idx.clamp(min=0)
     assigned_boxes = gt_boxes[idx_safe]    # [K, 4]
 
     # Compute targets
@@ -118,7 +134,7 @@ def encode_boxes(
         ],
         dim=-1,
     )  # [K, 4]
-    targets = lt / stride  # normalise
+    targets = lt / stride
     targets[~mask] = 0.0
 
     return targets, mask, assigned_idx
@@ -211,12 +227,46 @@ def sigmoid_focal_loss(
     return loss
 
 
-def giou_loss(
+def diou_loss(
     pred_boxes: torch.Tensor,  # [M, 4] decoded [x1,y1,x2,y2]
     gt_boxes: torch.Tensor,    # [M, 4]
+    eps: float = 1e-6,
 ) -> torch.Tensor:
-    """Generalised IoU loss (1 - GIoU), always in [0, 2] for valid boxes."""
-    return generalized_box_iou_loss(pred_boxes, gt_boxes).mean()
+    """Distance-IoU loss: 1 − IoU + ρ²(b̂,b)/c².
+
+    Adds a centre-distance penalty to IoU so the model learns to pull
+    predicted boxes toward their ground-truth centres, converging faster
+    than GIoU when boxes are disjoint.
+    """
+    # --- IoU -----------------------------------------------------------------
+    x1 = torch.max(pred_boxes[:, 0], gt_boxes[:, 0])
+    y1 = torch.max(pred_boxes[:, 1], gt_boxes[:, 1])
+    x2 = torch.min(pred_boxes[:, 2], gt_boxes[:, 2])
+    y2 = torch.min(pred_boxes[:, 3], gt_boxes[:, 3])
+    inter = (x2 - x1).clamp(min=0.0) * (y2 - y1).clamp(min=0.0)
+
+    area_pred = (pred_boxes[:, 2] - pred_boxes[:, 0]) * (pred_boxes[:, 3] - pred_boxes[:, 1])
+    area_gt = (gt_boxes[:, 2] - gt_boxes[:, 0]) * (gt_boxes[:, 3] - gt_boxes[:, 1])
+    union = area_pred + area_gt - inter
+    iou = inter / (union + eps)
+
+    # --- Centre-distance penalty ---------------------------------------------
+    ctr_pred_x = (pred_boxes[:, 0] + pred_boxes[:, 2]) / 2.0
+    ctr_pred_y = (pred_boxes[:, 1] + pred_boxes[:, 3]) / 2.0
+    ctr_gt_x = (gt_boxes[:, 0] + gt_boxes[:, 2]) / 2.0
+    ctr_gt_y = (gt_boxes[:, 1] + gt_boxes[:, 3]) / 2.0
+
+    rho2 = (ctr_pred_x - ctr_gt_x).pow(2) + (ctr_pred_y - ctr_gt_y).pow(2)
+
+    # Smallest enclosing-box diagonal
+    enc_x1 = torch.min(pred_boxes[:, 0], gt_boxes[:, 0])
+    enc_y1 = torch.min(pred_boxes[:, 1], gt_boxes[:, 1])
+    enc_x2 = torch.max(pred_boxes[:, 2], gt_boxes[:, 2])
+    enc_y2 = torch.max(pred_boxes[:, 3], gt_boxes[:, 3])
+    c2 = (enc_x2 - enc_x1).pow(2) + (enc_y2 - enc_y1).pow(2)
+
+    diou = iou - rho2 / (c2 + eps)
+    return (1.0 - diou).mean()
 
 
 # ---------------------------------------------------------------------------
@@ -232,6 +282,7 @@ def detection_loss(
     focal_gamma: float = 2.0,
     box_weight: float = 1.0,
     ctr_weight: float = 1.0,
+    center_radius: float = 1.5,
 ) -> dict[str, float]:
     """Compute detection losses for a batch.
 
@@ -243,6 +294,7 @@ def detection_loss(
                   and "labels" [N_i] (0-indexed class ids).
     locations :   [H*W, 2] grid centres in pixel coords.
     stride :      feature-map stride (16 for ViT-B/16 @ 224).
+    center_radius : FCOS centre-sampling radius (×stride).
 
     Returns
     -------
@@ -267,7 +319,7 @@ def detection_loss(
 
         # Encode targets ----------------------------------------------------
         reg_target, pos_mask, assigned_idx = encode_boxes(
-            gt_boxes, locations, stride
+            gt_boxes, locations, stride, center_radius=center_radius,
         )  # reg_target [K,4], pos_mask [K], assigned_idx [K]
 
         # Classification targets: one-hot at positive locations ---------------
@@ -293,12 +345,12 @@ def detection_loss(
         if n_pos > 0:
             total_pos += n_pos
 
-            # Box loss (GIoU)
+            # Box loss — DIoU (faster convergence than GIoU)
             pred_boxes_decoded = decode_boxes(
                 box_pred[pos_idx], locations[pos_idx], stride
             )
             gt_boxes_assigned = gt_boxes[assigned_idx[pos_idx]]
-            box_loss = giou_loss(pred_boxes_decoded, gt_boxes_assigned)
+            box_loss = diou_loss(pred_boxes_decoded, gt_boxes_assigned)
             box_losses.append(box_loss)
 
             # Centerness loss (BCE)
