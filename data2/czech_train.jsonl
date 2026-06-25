@@ -1,0 +1,80 @@
+{"image": "Czech_000587.jpg", "boxes": [], "labels": []}
+{"image": "Czech_001889.jpg", "boxes": [[242.0, 434.0, 269.0, 529.0]], "labels": [0]}
+{"image": "Czech_001609.jpg", "boxes": [[323.0, 442.0, 375.0, 513.0]], "labels": [0]}
+{"image": "Czech_001245.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000301.jpg", "boxes": [], "labels": []}
+{"image": "Czech_001256.jpg", "boxes": [[175.0, 424.0, 244.0, 509.0]], "labels": [0]}
+{"image": "Czech_002981.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000419.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000452.jpg", "boxes": [[304.0, 411.0, 406.0, 530.0]], "labels": [0]}
+{"image": "Czech_002532.jpg", "boxes": [[176.0, 402.0, 258.0, 512.0]], "labels": [0]}
+{"image": "Czech_000365.jpg", "boxes": [[184.0, 438.0, 266.0, 507.0], [285.0, 451.0, 367.0, 520.0], [6.0, 391.0, 222.0, 516.0]], "labels": [0, 0, 0]}
+{"image": "Czech_002790.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000652.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000665.jpg", "boxes": [[343.0, 460.0, 381.0, 514.0]], "labels": [0]}
+{"image": "Czech_003443.jpg", "boxes": [], "labels": []}
+{"image": "Czech_002482.jpg", "boxes": [], "labels": []}
+{"image": "Czech_002885.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000850.jpg", "boxes": [[94.0, 383.0, 205.0, 490.0], [317.0, 407.0, 406.0, 524.0]], "labels": [0, 0]}
+{"image": "Czech_001383.jpg", "boxes": [[377.0, 457.0, 430.0, 533.0], [498.0, 432.0, 531.0, 540.0]], "labels": [0, 0]}
+{"image": "Czech_002754.jpg", "boxes": [], "labels": []}
+{"image": "Czech_003177.jpg", "boxes": [], "labels": []}
+{"image": "Czech_002213.jpg", "boxes": [[47.0, 421.0, 173.0, 510.0]], "labels": [0]}
+{"image": "Czech_001090.jpg", "boxes": [[106.0, 482.0, 321.0, 515.0], [11.0, 484.0, 102.0, 514.0]], "labels": [1, 3]}
+{"image": "Czech_002827.jpg", "boxes": [], "labels": []}
+{"image": "Czech_003589.jpg", "boxes": [[263.0, 459.0, 315.0, 514.0], [128.0, 477.0, 194.0, 519.0]], "labels": [0, 0]}
+{"image": "Czech_001034.jpg", "boxes": [], "labels": []}
+{"image": "Czech_001630.jpg", "boxes": [], "labels": []}
+{"image": "Czech_002085.jpg", "boxes": [[6.0, 436.0, 270.0, 481.0]], "labels": [1]}
+{"image": "Czech_003500.jpg", "boxes": [[37.0, 428.0, 145.0, 513.0], [270.0, 407.0, 303.0, 437.0]], "labels": [0, 3]}
+{"image": "Czech_003389.jpg", "boxes": [], "labels": []}
+{"image": "Czech_001945.jpg", "boxes": [], "labels": []}
+{"image": "Czech_002289.jpg", "boxes": [], "labels": []}
+{"image": "Czech_002702.jpg", "boxes": [], "labels": []}
+{"image": "Czech_002361.jpg", "boxes": [[2.0, 424.0, 135.0, 511.0]], "labels": [0]}
+{"image": "Czech_000627.jpg", "boxes": [[141.0, 415.0, 226.0, 514.0], [174.0, 395.0, 399.0, 524.0]], "labels": [0, 2]}
+{"image": "Czech_001292.jpg", "boxes": [[202.0, 410.0, 304.0, 521.0], [337.0, 445.0, 393.0, 525.0]], "labels": [2, 2]}
+{"image": "Czech_001157.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000335.jpg", "boxes": [], "labels": []}
+{"image": "Czech_001766.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000115.jpg", "boxes": [[140.0, 410.0, 216.0, 482.0]], "labels": [0]}
+{"image": "Czech_003086.jpg", "boxes": [[257.0, 483.0, 394.0, 519.0]], "labels": [2]}
+{"image": "Czech_002910.jpg", "boxes": [[92.0, 428.0, 238.0, 458.0]], "labels": [1]}
+{"image": "Czech_001190.jpg", "boxes": [[273.0, 425.0, 341.0, 470.0], [138.0, 416.0, 206.0, 461.0]], "labels": [2, 2]}
+{"image": "Czech_003087.jpg", "boxes": [], "labels": []}
+{"image": "Czech_001138.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000040.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000372.jpg", "boxes": [], "labels": []}
+{"image": "Czech_003302.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000306.jpg", "boxes": [], "labels": []}
+{"image": "Czech_001182.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000355.jpg", "boxes": [[235.0, 397.0, 317.0, 443.0], [240.0, 451.0, 310.0, 520.0]], "labels": [0, 0]}
+{"image": "Czech_000167.jpg", "boxes": [[4.0, 412.0, 151.0, 495.0]], "labels": [0]}
+{"image": "Czech_001727.jpg", "boxes": [[132.0, 430.0, 194.0, 490.0]], "labels": [0]}
+{"image": "Czech_002683.jpg", "boxes": [], "labels": []}
+{"image": "Czech_001236.jpg", "boxes": [[216.0, 458.0, 261.0, 522.0], [369.0, 452.0, 416.0, 475.0], [268.0, 401.0, 294.0, 435.0]], "labels": [0, 0, 0]}
+{"image": "Czech_001455.jpg", "boxes": [[296.0, 450.0, 327.0, 526.0], [132.0, 448.0, 188.0, 520.0]], "labels": [0, 0]}
+{"image": "Czech_003488.jpg", "boxes": [[13.0, 442.0, 286.0, 472.0], [167.0, 448.0, 205.0, 513.0], [303.0, 460.0, 416.0, 533.0]], "labels": [1, 1, 2]}
+{"image": "Czech_002530.jpg", "boxes": [], "labels": []}
+{"image": "Czech_001106.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000682.jpg", "boxes": [], "labels": []}
+{"image": "Czech_002999.jpg", "boxes": [], "labels": []}
+{"image": "Czech_003028.jpg", "boxes": [[56.0, 424.0, 189.0, 517.0]], "labels": [0]}
+{"image": "Czech_002471.jpg", "boxes": [[117.0, 459.0, 425.0, 496.0]], "labels": [1]}
+{"image": "Czech_001270.jpg", "boxes": [[378.0, 486.0, 435.0, 543.0], [22.0, 442.0, 140.0, 525.0], [220.0, 410.0, 335.0, 430.0]], "labels": [0, 0, 1]}
+{"image": "Czech_002472.jpg", "boxes": [[134.0, 412.0, 220.0, 515.0]], "labels": [0]}
+{"image": "Czech_002127.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000977.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000498.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000511.jpg", "boxes": [[191.0, 387.0, 224.0, 428.0]], "labels": [0]}
+{"image": "Czech_003439.jpg", "boxes": [], "labels": []}
+{"image": "Czech_002253.jpg", "boxes": [], "labels": []}
+{"image": "Czech_001850.jpg", "boxes": [], "labels": []}
+{"image": "Czech_002214.jpg", "boxes": [], "labels": []}
+{"image": "Czech_002145.jpg", "boxes": [[248.0, 415.0, 294.0, 526.0], [65.0, 431.0, 174.0, 517.0]], "labels": [0, 2]}
+{"image": "Czech_002444.jpg", "boxes": [[294.0, 405.0, 349.0, 436.0], [202.0, 469.0, 474.0, 535.0]], "labels": [3, 2]}
+{"image": "Czech_000284.jpg", "boxes": [], "labels": []}
+{"image": "Czech_003508.jpg", "boxes": [], "labels": []}
+{"image": "Czech_003407.jpg", "boxes": [], "labels": []}
+{"image": "Czech_003371.jpg", "boxes": [], "labels": []}
+{"image": "Czech_000519.jpg", "boxes": [[119.0, 401.0, 211.0, 476.0]], "labels": [0]}

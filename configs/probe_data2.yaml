@@ -1,0 +1,63 @@
+seed: 42
+device: cuda
+
+backbone:
+  name: vit_base_patch16_224
+  embed_dim: 768
+  frozen: true
+
+spem:
+  pca_dim: 50
+  num_prototypes: 10
+  kmeans_iters: 25
+  prompt_hidden_dim: 256
+  injection_layers: [0, 6]
+  prompt_temperature: 0.2
+  prompt_weight: 1.0
+
+dapa:
+  projection_dim: 256
+  weight: 0.5
+
+ssl:
+  hidden_dim: 2048
+  out_dim: 2048
+
+detection:
+  num_classes: 5
+  hidden_dim: 384
+  neck_dim: 128
+  source_label_fraction: 1.0
+
+detection_optim:
+  lr: 0.0005
+  lr_min: 0.000001
+  weight_decay: 0.0001
+  epochs: 50
+  focal_alpha: 0.25
+  focal_gamma: 2.0
+  box_weight: 1.0
+  ctr_weight: 1.0
+  score_threshold: 0.01
+  nms_threshold: 0.5
+  val_interval: 5
+
+optim:
+  lr: 0.0005
+  weight_decay: 0.05
+  pretrain_epochs: 10
+
+data:
+  source_manifest: data2/China_MotorBike_labeled.jsonl
+  target_manifest: data2/Japan_unlabeled.jsonl
+  val_manifest: data2/japan_val.jsonl
+  image_root: data2/images
+  batch_size: 4
+  gradient_accumulation: 1
+  num_workers: 0
+
+moco:
+  enabled: true
+  queue_size: 4096
+  temperature: 0.2
+  momentum: 0.999
