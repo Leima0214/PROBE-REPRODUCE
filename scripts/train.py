@@ -270,7 +270,7 @@ def train_detection_head(
                         predictions, targets, locations, stride,
                         focal_alpha=focal_alpha, focal_gamma=focal_gamma,
                         box_weight=box_weight, ctr_weight=ctr_weight,
-                        center_radius=center_radius,
+                        center_radius=center_radius, max_size=float(image_size),
                     )
             else:
                 _, patch_tokens, _ = model.encode(images, prototype_state)

@@ -283,6 +283,7 @@ def detection_loss(
     box_weight: float = 1.0,
     ctr_weight: float = 1.0,
     center_radius: float = 1.5,
+    max_size: float = 512.0,
 ) -> dict[str, float]:
     """Compute detection losses for a batch.
 
@@ -295,6 +296,7 @@ def detection_loss(
     locations :   [H*W, 2] grid centres in pixel coords.
     stride :      feature-map stride (16 for ViT-B/16 @ 224).
     center_radius : FCOS centre-sampling radius (×stride).
+    max_size :    image size for box clamping (must match inference).
 
     Returns
     -------
@@ -347,7 +349,8 @@ def detection_loss(
 
             # Box loss — DIoU (faster convergence than GIoU)
             pred_boxes_decoded = decode_boxes(
-                box_pred[pos_idx], locations[pos_idx], stride
+                box_pred[pos_idx], locations[pos_idx], stride,
+                max_size=max_size,
             )
             gt_boxes_assigned = gt_boxes[assigned_idx[pos_idx]]
             box_loss = diou_loss(pred_boxes_decoded, gt_boxes_assigned)
