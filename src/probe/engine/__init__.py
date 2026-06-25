@@ -15,7 +15,7 @@ from .detection import (
     encode_boxes,
     evaluate_map,
     generate_grid,
-    giou_loss,
+    diou_loss,
     sigmoid_focal_loss,
 )
 
@@ -33,6 +33,6 @@ __all__ = [
     "encode_boxes",
     "evaluate_map",
     "generate_grid",
-    "giou_loss",
+    "diou_loss",
     "sigmoid_focal_loss",
 ]
